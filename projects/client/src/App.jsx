@@ -25,7 +25,6 @@ import MenCollections from "./pages/MenCollections";
 import WomenCollections from "./pages/WomenCollections";
 import UnisexCollections from "./pages/UnisexCollections";
 import "./App.css"; // Add your CSS file for transitions
-import SalesReport from "./pages/SalesReport";
 
 const adminPaths = [
   "/adminlogin",
@@ -36,7 +35,6 @@ const adminPaths = [
   "/dashboard/staff",
   "/dashboard/warehouse",
   "/dashboard/report/stock",
-  "/dashboard/report/sales",
   "/dashboard/order/customers",
   "/dashboard/order/warehouse",
 ];
@@ -67,7 +65,6 @@ export default function App() {
                 <Route path="/dashboard/staff" element={<Staff />} />
                 <Route path="/dashboard/warehouse" element={<Warehouse />} />
                 <Route path="/dashboard/report/stock" element={<Stock />} />
-                <Route path="/dashboard/report/sales" element={<SalesReport />} />
                 <Route path="/dashboard/order/customers" element={<OrderCust />} />
                 <Route path="/dashboard/order/warehouse" element={<WarehouseOrder />} />
                 {/* Add more admin routes as needed */}
