@@ -9,7 +9,6 @@ import { PersistGate } from "redux-persist/integration/react";
 import { store, persistor } from "./store";
 import { Toaster } from "sonner";
 import { ChakraProvider, extendTheme } from "@chakra-ui/react";
-import { SkeletonTheme } from "react-loading-skeleton";
 
 const theme = extendTheme({
   fonts: {

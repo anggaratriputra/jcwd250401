@@ -13,7 +13,7 @@ function OrderCreatedModal({ isOpen, onClose, paymentMethod, totalPrice, orderId
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  
+  console.log(orderId);
   const handleDeleteAll = () => {
     dispatch(deleteAllCartItem());
   };

@@ -75,6 +75,7 @@ function CartSection() {
 
   const handleQuantityChange = async (newQuantity, cartIndex) => {
     // Update the quantity in the state
+
     const updatedCarts = carts.map((cart, index) => (index === cartIndex ? { ...cart, quantity: newQuantity } : cart));
     setCarts(updatedCarts);
 
@@ -93,6 +94,7 @@ function CartSection() {
     fetchCarts();
   }, [fetchCarts]);
 
+  
   const formatToRupiah = (price) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
@@ -118,16 +120,16 @@ function CartSection() {
             </div>
           )}
           {carts.map((cart, index) => (
-            <div className={`flex flex-col lg:w-[52vw] ${cart.Product.totalStockAllWarehouses === 0 ? 'opacity-50' : ''}`} key={cart.productId}>
+            <div className="flex flex-col lg:w-[52vw]" key={index}>
               <div className="flex lg:flex-row flex-col gap-4">
                 <div className="flex lg:justify-start justify-center">
                   <div className="w-[150px] h-[150px] lg:w-[180px] lg:h-[180px] relative">
-                    {cart.Product.totalStockAllWarehouses === 0 ? (
+                    {cart.Product.Mutations.length === 0 || cart.Product.Mutations[0].stock === 0 ? (
                       <img className="w-full h-full object-cover" loading="lazy" src={`http://localhost:8000/public/${cart.Product.productImages[0].imageUrl}`} />
                     ) : (
                       <img className="w-full h-full object-cover" loading="lazy" src={`http://localhost:8000/public/${cart.Product.productImages[0].imageUrl}`} />
                     )}
-                    {cart.Product.totalStockAllWarehouses === 0 ? (
+                    {cart.Product.Mutations.length === 0 || cart.Product.Mutations[0].stock === 0 ? (
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="bg-black bg-opacity-30 w-full flex justify-center text-white p-1">
                           <span className="text-lg font-medium">Out of Stock</span>
@@ -141,7 +143,7 @@ function CartSection() {
                 <div className="flex flex-col">
                   <div className="flex lg:w-[35vw] justify-between items-center">
                     <span className="font-bold">{cart.Product.name}</span>
-                    <PiTrash size={24} className="mr-2 cursor-pointer" onClick={() => toggleDeleteModal(cart)} />
+                    <PiTrash size={24} className="mr-2  cursor-pointer" onClick={() => toggleDeleteModal(cart)} />
                   </div>
                   <span className="text-sm mt-1">
                     SKU: {cart.Product.sku} ({cart.Product.gender})
@@ -149,9 +151,9 @@ function CartSection() {
                   <span className="text-sm mt-1">Size: All Size</span>
                   <span className="text-sm font-bold mt-2">{formatToRupiah(cart.Product.price)}</span>
                   <div className="flex flex-col mt-2 space-y-2">
-                    {cart.Product.totalStockAllWarehouses !== 0 && <span className="font-bold text-md">Quantity</span>}
+                    <span className="font-bold text-md">Quantity</span>
                     <div className="flex items-center space-x-32">
-                      {cart.Product.totalStockAllWarehouses === 0 ? (
+                      {cart.Product.Mutations.length === 0 || cart.Product.Mutations[0].stock === 0 ? (
                         <>
                           <span className="font-bold"> OUT OF STOCK</span>
                           {cart.quantity !== 0 && handleQuantityChange(0, index)}
@@ -161,13 +163,13 @@ function CartSection() {
                           defaultValue={cart.quantity}
                           size={"md"}
                           min={1}
-                          max={cart.Product.totalStockAllWarehouses}
+                          max={cart.Product.Mutations[0].stock}
                           onChange={(valueString) => {
                             let value = Number(valueString);
 
                             // Check if the entered quantity exceeds the available stock
-                            if (value > cart.Product.totalStockAllWarehouses) {
-                              value = cart.Product.totalStockAllWarehouses;
+                            if (value > cart.Product.Mutations[0].stock) {
+                              value = cart.Product.Mutations[0].stock;
                             }
 
                             // Update the quantity and handle the change
@@ -181,7 +183,7 @@ function CartSection() {
                           </NumberInputStepper>
                         </NumberInput>
                       )}
-                      {cart.Product.totalStockAllWarehouses === 0 ? <></> : <span className="font-bold text-md">Subtotal: {formatToRupiah(cart.Product.price * cart.quantity)}</span>}
+                      {cart.Product.Mutations.length === 0 || cart.Product.Mutations[0].stock === 0 ? <></> : <span className="font-bold text-md">Subtotal: {formatToRupiah(cart.Product.price * cart.quantity)}</span>}
                     </div>
                   </div>
                 </div>

@@ -11,7 +11,7 @@ import Footer from "../components/Footer";
 
 const HomeProducts = () => {
   const { gender, mainCategory, subCategory, productName } = useParams();
-  document.title = "RAINS - Products";
+  
 
   useEffect(() => {
     // Scroll to the top when the component is first rendered, but only on larger screens

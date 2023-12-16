@@ -7,8 +7,6 @@ import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import api from "../api";
-import Skeleton from "react-loading-skeleton";
-import "react-loading-skeleton/dist/skeleton.css";
 
 function ProductGrid() {
   const { gender, mainCategory, subCategory } = useParams();
@@ -23,16 +21,6 @@ function ProductGrid() {
   const location = useLocation();
   const [categoriesData, setCategoriesData] = useState([]);
   const navigate = useNavigate();
-
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const loadingTimeout = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(loadingTimeout); // Clear the timeout on component unmount
-  }, [currentPage, totalData, gender, mainCategory, sortCriteria, subCategory, totalPages, currentPage]);
 
   useEffect(() => {
     // Initialize currentImageIndexes with default value 0 for each product ID
@@ -114,17 +102,17 @@ function ProductGrid() {
     const queryParams = new URLSearchParams(location.search);
     const sortParam = queryParams.get("sort");
     const pageParam = queryParams.get("page");
-
+  
     // Check if the sort parameter is present and update the state
     if (sortParam) {
       setSortCriteria(sortParam);
     }
-
+  
     // Check if the page parameter is present and update the state
     if (pageParam) {
       setCurrentPage(parseInt(pageParam, 10));
     }
-
+  
     // Fetch products based on the sort and page parameters
     fetchProducts();
   }, [location.search]);
@@ -190,18 +178,18 @@ function ProductGrid() {
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
       setCurrentPage(newPage);
-
+  
       // Update URL with new page parameter
       const queryParams = new URLSearchParams(location.search);
       queryParams.set("page", newPage);
-
+  
       navigate({
         pathname: location.pathname,
         search: queryParams.toString(),
       });
     }
   };
-
+  
   useEffect(() => {
     // Scroll to the top when the component is first rendered
     window.scrollTo(0, 0);
@@ -209,21 +197,7 @@ function ProductGrid() {
 
   return (
     <div>
-      {isLoading ? (
-        <div className="hidden lg:flex flex-col space-y-10 lg:space-y-0">
-          <div className="flex justify-between">
-            <div> &nbsp;</div>
-            <div className="flex flex-col">
-              <div className="w-[80px]">
-                <Skeleton height={30} />
-              </div>
-              <div className="w-[180px]">
-                <Skeleton height={40} />
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : products.length === 0 ? (
+      {products.length === 0 && (
         <div className="flex flex-col space-y-10 lg:space-y-0">
           <div className="lg:hidden flex w-full space-x-2 items-center justify-between">
             <div className="w-[200px]">
@@ -242,7 +216,7 @@ function ProductGrid() {
               <div className="flex space-x-2">
                 <Button color="light" size="sm" className="w-32">
                   <Link className="hover:underline cursor-pointer" to={`/products/${gender}/${mainCategory}`}>
-                    All {mainCategory.charAt(0).toUpperCase() + mainCategory.slice(1)} ]
+                    All {mainCategory.charAt(0).toUpperCase() + mainCategory.slice(1)}
                   </Link>
                 </Button>
                 {categoriesData.map((category, index) => (
@@ -260,7 +234,8 @@ function ProductGrid() {
             <span className="text-xl w-[34vw]">&nbsp; </span>
           </div>
         </div>
-      ) : (
+      )}
+      {products.length !== 0 && (
         <div className="flex lg:justify-between">
           <div className="hidden lg:block">&nbsp;</div>
           <div className="hidden lg:block w-full lg:w-[168px] space-y-2">
@@ -309,68 +284,44 @@ function ProductGrid() {
         </div>
       )}
       <div className="mt-6">
-        {isLoading ? (
-          <SimpleGrid columns={{ base: 2, lg: 4 }} spacing={{ base: 3, lg: 4 }} h={{ base: "68vh", lg: "63vh" }} borderRadius={{ base: "xl", lg: "md" }} overflowY="auto" className="scrollbar-hide">
-            {Array.from({ length: 8 }, (_, index) => (
-              <div className="flex flex-col items-center lg:justify-normal lg:items-start space-y-6 lg:space-y-4">
-                <div className="hidden lg:block w-[230px]">
-                  <Skeleton height="280px" />
-                </div>
-                <div className="lg:hidden w-[150px]">
-                  <Skeleton height="150px" />
-                </div>
-                <div className="flex flex-col">
-                  <div className="w-[120px] lg:w-[180px]">
-                    <Skeleton height={20} />
-                  </div>
-                  <div className="w-[80px] lg:w-[130px]">
-                    <Skeleton height={20} />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </SimpleGrid>
-        ) : (
-          <SimpleGrid columns={{ base: 2, lg: 4 }} spacing={{ base: 3, lg: 4 }} h={{ base: "68vh", lg: "63vh" }} borderRadius={{ base: "xl", lg: "md" }} overflowY="auto" className="scrollbar-hide">
-            {products.map((product) => (
-              <div className="flex flex-col items-center lg:justify-normal lg:items-start space-y-6 lg:space-y-10">
-                <Slider {...settings} className="w-[180px] h-[260px] lg:w-[230px] lg:h-[280px]">
-                  {product.productImages.map((image, idx) => (
-                    <div
-                      key={idx}
-                      className="w-[180px] h-[250px] lg:w-[230px] lg:h-[310px] cursor-pointer relative"
-                      onClick={() =>
-                        navigate(
-                          `/products/${product.gender.toLowerCase()}/${product.categories[0].name.replace(/\s+/g, "-").toLowerCase()}/${product.categories[1].name.replace(/\s+/g, "-").toLowerCase()}/${product.name
-                            .replace(/\s+/g, "-")
-                            .toLowerCase()}`
-                        )
-                      }
-                    >
-                      {/* Product Image */}
-                      <img src={`http://localhost:8000/public/${image.imageUrl}`} loading="lazy" className="w-full h-full object-cover shadow-md rounded-lg lg:rounded-none" alt={`Product Image ${idx}`} />
+        <SimpleGrid columns={{ base: 2, lg: 4 }} spacing={{ base: 3, lg: 4 }} h={{ base: "68vh", lg: "63vh" }} borderRadius={{ base: "xl", lg: "md" }} overflowY="auto" className="scrollbar-hide">
+          {products.map((product) => (
+            <div className="flex flex-col items-center lg:justify-normal lg:items-start space-y-6 lg:space-y-10">
+              <Slider {...settings} className="w-[180px] h-[260px] lg:w-[230px] lg:h-[280px]">
+                {product.productImages.map((image, idx) => (
+                  <div
+                    key={idx}
+                    className="w-[180px] h-[250px] lg:w-[230px] lg:h-[310px] cursor-pointer relative"
+                    onClick={() =>
+                      navigate(
+                        `/products/${product.gender.toLowerCase()}/${product.categories[0].name.replace(/\s+/g, "-").toLowerCase()}/${product.categories[1].name.replace(/\s+/g, "-").toLowerCase()}/${product.name
+                          .replace(/\s+/g, "-")
+                          .toLowerCase()}`
+                      )
+                    }
+                  >
+                    {/* Product Image */}
+                    <img src={`http://localhost:8000/public/${image.imageUrl}`} loading="lazy" className="w-full h-full object-cover shadow-md rounded-lg lg:rounded-none" alt={`Product Image ${idx}`} />
 
-                      {/* Overlay for Out of Stock */}
-                      {product.totalStockAllWarehouses === 0 && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="bg-black bg-opacity-30 w-full flex justify-center text-white p-1">
-                            <span className="text-lg font-medium">Out of Stock</span>
-                          </div>
+                    {/* Overlay for Out of Stock */}
+                    {product.totalStockAllWarehouses === 0 && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="bg-black bg-opacity-30 w-full flex justify-center text-white p-1">
+                          <span className="text-lg font-medium">Out of Stock</span>
                         </div>
-                      )}
-                    </div>
-                  ))}
-                </Slider>
-                <div className="text-md flex flex-col">
-                  <span>{product.name}</span>
-                  <span className="font-bold">{formatToRupiah(product.price)}</span>
-                </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </Slider>
+              <div className="text-md flex flex-col">
+                <span>{product.name}</span>
+                <span className="font-bold">{formatToRupiah(product.price)}</span>
               </div>
-            ))}
-          </SimpleGrid>
-        )}
-
-        {!isLoading && totalPages > 1 && (
+            </div>
+          ))}
+        </SimpleGrid>
+        {totalPages > 1 && (
           <Box display="flex" justifyContent="center" gap={2} mt={4} textAlign="right" mr={4}>
             <Flex alignItems={"center"} gap={2}>
               <Box>

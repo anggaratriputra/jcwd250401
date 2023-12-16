@@ -11,12 +11,9 @@ import _debounce from "lodash/debounce";
 import UnarchiveProductModal from "./UnarchiveProductModal";
 import { toast } from "sonner";
 import { logoutAdmin } from "../slices/accountSlices";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import getProducts from "../api/products/getProducts";
 import getArchivedProducts from "../api/products/getArchivedProducts";
-import Skeleton from "react-loading-skeleton";
-import "react-loading-skeleton/dist/skeleton.css";
-import DeleteProductModal from "./DeleteProductModal";
 
 function ArchivedProductList() {
   const [sortCriteria, setSortCriteria] = useState("date-desc"); // Default sorting criteria that matches the backend;
@@ -33,77 +30,18 @@ function ArchivedProductList() {
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [openUnarchiveProductModal, setOpenUnarchiveProductModal] = useState(false);
-  const location = useLocation();
-  const [isLoading, setIsLoading] = useState(true);
+
   const newProducts = useSelector((state) => state.product?.productList);
   const isWarehouseAdmin = useSelector((state) => state?.account?.isWarehouseAdmin);
   const navigate = useNavigate();
   const categoryLists = useSelector((state) => state.category?.categoryList);
-  const [openDeleteProductModal, setOpenDeleteProductModal] = useState(false);
-
-  useEffect(() => {
-    setIsLoading(true);
-    const loadingTimeout = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(loadingTimeout); // Clear the timeout on component unmount
-  }, [currentPage, sortCriteria, selectedCategory, searchInput, selectedFilter, totalPages, totalData, newProducts, categoryLists]);
 
   const handleSearchInputChange = _debounce((e) => {
     setSearchInput(e.target.value);
   }, 600); // 600 milliseconds debounce time (adjust as needed)
 
-  const handlePageChange = (newPage) => {
-    if (newPage >= 1 && newPage <= totalPages) {
-      setCurrentPage(newPage);
-    }
-    const queryParams = new URLSearchParams(location.search);
-    queryParams.set("page", newPage);
-
-    navigate({
-      pathname: location.pathname,
-      search: queryParams.toString(),
-    });
-  };
-
-  const handleCategoryChange = (e) => {
-    const selectedCategory = e.target.value.toLowerCase();
-    setSelectedCategory(selectedCategory);
-
-    const queryParams = new URLSearchParams(location.search);
-    queryParams.set("category", selectedCategory);
-
-    navigate({
-      pathname: location.pathname,
-      search: queryParams.toString(),
-    });
-  };
-
-  const handleSortChange = (event) => {
-    const selectedSortValue = event.target.value;
-    setSortCriteria(selectedSortValue);
-
-    const queryParams = new URLSearchParams(location.search);
-    queryParams.set("sort", selectedSortValue);
-
-    navigate({
-      pathname: location.pathname,
-      search: queryParams.toString(),
-    });
-  };
-
-  const handleFilterChange = (event) => {
-    const selectedFilterValue = event.target.value;
-    setSelectedFilter(selectedFilterValue);
-
-    const queryParams = new URLSearchParams(location.search);
-    queryParams.set("gender", selectedFilterValue);
-
-    navigate({
-      pathname: location.pathname,
-      search: queryParams.toString(),
-    });
+  const handleWarehouseChange = (e) => {
+    setSelectedWarehouse(e.target.value);
   };
 
   const formatToRupiah = (number) => {
@@ -181,47 +119,33 @@ function ArchivedProductList() {
     fetchCategories();
   }, [fetchProducts, fetchCategories]);
 
-  useEffect(() => {
-    // Parse the URL to get the sort and page parameters
-    const queryParams = new URLSearchParams(location.search);
-    const sortParam = queryParams.get("sort");
-    const pageParam = queryParams.get("page");
-    const categoryParam = queryParams.get("category");
-    const searchParam = queryParams.get("search");
-    const genderParam = queryParams.get("gender");
-
-    // Check if the sort parameter is present and update the state
-    if (sortParam) {
-      setSortCriteria(sortParam);
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
     }
+  };
 
-    // Check if the page parameter is present and update the state
-    if (pageParam) {
-      setCurrentPage(parseInt(pageParam, 10));
-    }
+  const handleCategoryChange = (e) => {
+    const selectedCategory = e.target.value;
+    setSelectedCategory(selectedCategory);
+  };
 
-    // Check if the category parameter is present and update the state
-    if (categoryParam === "all") {
-      setSelectedCategory("All");
-    } else if (categoryParam) {
-      // Capitalize the first letter of each word
-      const formattedCategory = categoryParam.replace(/\b\w/g, (match) => match.toUpperCase());
-      setSelectedCategory(formattedCategory);
-    }
+  const handleSortChange = (event) => {
+    const selectedSortValue = event.target.value;
+    setSortCriteria(selectedSortValue);
+  };
 
-    // Check if the search parameter is present and update the state
-    if (searchParam) {
-      setSearchInput(searchParam);
-    }
+  const handleFilterChange = (event) => {
+    const selectedFilterValue = event.target.value;
+    setSelectedFilter(selectedFilterValue);
+  };
 
-    // Check if the gender parameter is present and update the state
-    if (genderParam) {
-      setSelectedFilter(genderParam);
-    }
-
-    // Fetch products based on the updated state
-    fetchProducts();
-  }, [location.search]);
+  // const warehouse = [
+  //   { label: "All Warehouse", value: "All" },
+  //   { label: "Jakarta", value: "Jakarta" },
+  //   { label: "Bandung", value: "Bandung" },
+  //   { label: "Medan", value: "Medan" },
+  // ];
 
   const sortingOptions = [
     { label: "Date DESC", value: "date-desc" },
@@ -263,11 +187,6 @@ function ArchivedProductList() {
     setOpenUnarchiveProductModal(!openUnarchiveProductModal);
   };
 
-  const toggleDeleteModal = (product) => {
-    setSelectedProduct(product);
-    setOpenDeleteProductModal(!openDeleteProductModal);
-  };
-
   return (
     <div className="flex flex-col gap-4 w-full h-screen">
       <div className="w-full flex justify-between space-x-16">
@@ -285,6 +204,18 @@ function ArchivedProductList() {
           </div>
         </div>
         <div className="flex gap-4 w-full">
+          {/* <div className="w-full">
+            <select className="py-2 border-2 rounded-lg w-full text-sm shadow-md focus:outline-none focus:border-gray-800 border-gray-400 focus:ring-transparent">
+              <option value="" disabled className="text-gray-400">
+                Warehouse
+              </option>
+              {warehouse.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div> */}
           <div className="w-full">
             <select className="py-2 border-2 rounded-lg w-full text-sm shadow-md focus:outline-none focus:border-gray-800 border-gray-400 focus:ring-transparent " onChange={handleFilterChange}>
               <option value="" disabled className="text-gray-400">
@@ -339,130 +270,84 @@ function ArchivedProductList() {
         </div>
       </div>
       <div className={`space-y-6 overflow-y-scroll scrollbar-hide ${isWarehouseAdmin ? "h-[62vh]" : "h-[56vh]"}`}>
-        {isLoading ? (
-          // Display the skeleton loading effect during the loading period
-          Array.from({ length: 5 }, (_, index) => (
-            <div key={index} className="border border-gray-200 rounded-md px-4 lg:px-6 py-4 lg:py-2">
-              <div className="mt-4 flex justify-between">
-                <div className="flex lg:flex-row flex-col justify-between w-full">
-                  <div className="flex flex-col space-y-4 mb-4">
-                    <div className="flex flex-1 flex-col lg:flex-row lg:items-center justify-between lg:justify-normal lg:space-x-4 space-x-6 lg:space-y-0">
-                      <div className="w-[100px] hidden lg:block">
-                        <Skeleton height="100px" />
-                      </div>
-                      <div className=" flex justify-center mb-4 lg:hidden">
-                        <div className="w-[200px]">
-                          <Skeleton height="200px" />
-                        </div>
-                      </div>
-                      <div className="flex flex-1 lg:flex-row flex-col text-sm lg:space-x-4 lg:space-y-0 space-y-4 ">
-                        <div className="flex flex-col">
-                          <div className="w-[150px] lg:w-[250px]">
-                            <Skeleton height={20} />
-                          </div>
-                          <div className="w-[100px] lg:w-[200px]">
-                            <Skeleton height={20} />
-                          </div>
-                        </div>
-                        <div className="w-[150px] lg:w-[150px]">
-                          <Skeleton height={20} count={2} />
-                        </div>
-                        <div className="w-[150px] lg:w-[150px]">
-                          <Skeleton height={20} count={2} />
-                        </div>
-                        <div className="w-[150px] lg:w-[150px]">
-                          <Skeleton height={20} count={2} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="hidden lg:flex flex-col justify-center">
-                    <div className="w-[50px] lg:w-[200px]">
-                      <Skeleton height={40} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))
-        ) : products.length === 0 ? (
+        {products.length == 0 ? (
           <Text textAlign={"center"} fontStyle={"italic"}>
             No data matches.
           </Text>
         ) : (
-          products.map((product) => (
-            <div key={product.id} className="bg-white items-center justify-between flex gap-6 h-36 w-full px-6 py-2 rounded-lg shadow-sm">
-              <div className="h-[100px] w-[100px] flex justify-center items-center">
-                {product.productImages[0].imageUrl ? (
-                  <img src={`http://localhost:8000/public/${product.productImages[0].imageUrl}`} className="w-full h-full object-cover shadow-lg" alt="Product Image" style={{ filter: "grayscale(100%)" }} />
-                ) : (
-                  <div className="w-full h-full flex justify-center items-center bg-gray-200 text-gray-400">
-                    <div className="flex flex-col items-center justify-center">
-                      <PiInfo className="h-8 w-8" />
-                      <span>No Image</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex w-60 flex-col">
-                <span className="font-bold">(Archived)</span>
-                <span className="font-bold">{product.name}</span>
-                <span>
-                  SKU : {product.sku} ({product.gender}){" "}
-                </span>
-              </div>
-              <div className="flex w-40 flex-col">
-                <span className="font-bold">Statistic</span>
-                <div className="flex flex-row items-center gap-4">
-                  <div className="flex flex-row items-center gap-1">
-                    {" "}
-                    <PiEye /> {product.viewCount}{" "}
-                  </div>
-                  <div className="flex flex-row items-center gap-1">
-                    {" "}
-                    <PiShoppingBag /> {product.soldCount}{" "}
+          ""
+        )}
+        {products.map((product) => (
+          <div key={product.id} className="bg-white items-center justify-between flex gap-6 h-36 w-full px-6 py-2 rounded-lg shadow-sm">
+            <div className="h-[100px] w-[100px] flex justify-center items-center">
+              {product.productImages[0].imageUrl ? (
+                <img src={`http://localhost:8000/public/${product.productImages[0].imageUrl}`} className="w-full h-full object-cover shadow-lg" alt="Product Image" style={{ filter: "grayscale(100%)" }} />
+              ) : (
+                <div className="w-full h-full flex justify-center items-center bg-gray-200 text-gray-400">
+                  <div className="flex flex-col items-center justify-center">
+                    <PiInfo className="h-8 w-8" />
+                    <span>No Image</span>
                   </div>
                 </div>
-              </div>
-              <div className="flex flex-col w-48 ">
-                <span className="font-bold">Price</span>
-                <span>{formatToRupiah(product.price)}</span>
-              </div>
-              <div className="flex flex-col w-44">
-                <span className="font-bold">Stock</span>
-                <span>{product.totalStockAllWarehouses}</span>
-              </div>
-              <div>
-                {!isWarehouseAdmin && (
-                  <Menu>
-                    <MenuButton
-                      px={2}
-                      py={2}
-                      transition="all 0.2s"
-                      borderRadius="lg"
-                      textColor="gray.600"
-                      boxShadow="md"
-                      borderColor="gray.500"
-                      borderWidth="2px"
-                      _hover={{ bg: "gray.900", textColor: "white" }}
-                      _expanded={{ bg: "gray.900", textColor: "white" }}
-                    >
-                      <Flex justifyContent="between" gap={4} px={2} alignItems="center">
-                        <Text fontWeight="bold">Edit</Text>
-                        <PiCaretDown size="20px" />
-                      </Flex>
-                    </MenuButton>
-                    <MenuList>
-                      <MenuItem onClick={() => toggleUnarchiveModal(product)}>Unarchive</MenuItem>
-                      <MenuItem onClick={() => toggleDeleteModal(product)}>Delete</MenuItem>
-                    </MenuList>
-                  </Menu>
-                )}
+              )}
+            </div>
+
+            <div className="flex w-60 flex-col">
+              <span className="font-bold">(Archived)</span>
+              <span className="font-bold">{product.name}</span>
+              <span>
+                SKU : {product.sku} ({product.gender}){" "}
+              </span>
+            </div>
+            <div className="flex w-40 flex-col">
+              <span className="font-bold">Statistic</span>
+              <div className="flex flex-row items-center gap-4">
+                <div className="flex flex-row items-center gap-1">
+                  {" "}
+                  <PiEye /> {product.viewCount}{" "}
+                </div>
+                <div className="flex flex-row items-center gap-1">
+                  {" "}
+                  <PiShoppingBag /> {product.soldCount}{" "}
+                </div>
               </div>
             </div>
-          ))
-        )}
+            <div className="flex flex-col w-48 ">
+              <span className="font-bold">Price</span>
+              <span>{formatToRupiah(product.price)}</span>
+            </div>
+            <div className="flex flex-col w-44">
+              <span className="font-bold">Stock</span>
+             <span>{product.totalStockAllWarehouses}</span>
+            </div>
+            <div>
+              {!isWarehouseAdmin && (
+                <Menu>
+                  <MenuButton
+                    px={2}
+                    py={2}
+                    transition="all 0.2s"
+                    borderRadius="lg"
+                    textColor="gray.600"
+                    boxShadow="md"
+                    borderColor="gray.500"
+                    borderWidth="2px"
+                    _hover={{ bg: "gray.900", textColor: "white" }}
+                    _expanded={{ bg: "gray.900", textColor: "white" }}
+                  >
+                    <Flex justifyContent="between" gap={4} px={2} alignItems="center">
+                      <Text fontWeight="bold">Edit</Text>
+                      <PiCaretDown size="20px" />
+                    </Flex>
+                  </MenuButton>
+                  <MenuList>
+                    <MenuItem onClick={() => toggleUnarchiveModal(product)}>Unarchive</MenuItem>
+                  </MenuList>
+                </Menu>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
       <Box display="flex" justifyContent="right" gap={2} textAlign="right" mr={4}>
         <Flex alignItems={"center"} gap={2}>
@@ -471,7 +356,7 @@ function ArchivedProductList() {
             Page{" "}
           </Text>
           <Box>
-            <Button
+          <Button
               boxShadow="md"
               key={1}
               size="xs"
@@ -510,7 +395,6 @@ function ArchivedProductList() {
         </Flex>
       </Box>
       {openUnarchiveProductModal && <UnarchiveProductModal isOpen={openUnarchiveProductModal} data={selectedProduct} isClose={toggleUnarchiveModal} />}
-      {openDeleteProductModal && <DeleteProductModal isOpen={openDeleteProductModal} data={selectedProduct} isClose={toggleDeleteModal} />}
     </div>
   );
 }

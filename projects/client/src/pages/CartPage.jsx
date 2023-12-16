@@ -6,7 +6,7 @@ import Footer from "../components/Footer";
 
 function CartPage() {
   const { gender, mainCategory, subCategory, productName } = useParams();
-  document.title = "RAINS - Shopping Cart";
+
 
   useEffect(() => {
     // Scroll to the top when the component is first rendered

@@ -51,7 +51,7 @@ export const ProductNavPage = () => {
 
   const fetchCategories = useCallback(async () => {
     try {
-      const response = await api.get(`/api/category/user/sub-categories?mainCategory=${mainCategory}`);
+      const response = await api.get(`/category/user/sub-categories?mainCategory=${mainCategory}`);
       const categoryData = response.data.detail;
       setCategories(categoryData);
       console.log(categoryData);

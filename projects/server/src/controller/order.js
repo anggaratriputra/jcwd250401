@@ -2,7 +2,9 @@ const { Sequelize, Op } = require("sequelize");
 const axios = require("axios");
 const fs = require("fs").promises;
 
+
 const { isAfter, differenceInMinutes } = require("date-fns");
+
 
 const { Address, Order, OrderItem, Product, ProductImage, Warehouse, Shipment, Cart, CartItem, User, Mutation, WarehouseAddress, Journal, sequelize } = require("../models");
 
@@ -69,7 +71,7 @@ exports.paymentProof = async (req, res) => {
       });
     }
 
-    order.status = "waiting-for-confirmation";
+    order.status = "waiting-for-payment-confirmation";
     await order.save({ transaction: t });
     await t.commit();
 
@@ -164,6 +166,7 @@ exports.confirmPayment = async (req, res) => {
     });
   }
 };
+
 
 // Get all order lists from all users
 exports.getAllOrderLists = async (req, res) => {
@@ -320,109 +323,16 @@ exports.getAllOrderLists = async (req, res) => {
 
 // create order
 
-const getProductStock = async (products) => {
-  return await Promise.all(
-    products.map(async (item) => {
-      try {
-        const product = await Product.findOne({
-          where: { id: item.productId },
-          attributes: ["id", "price"],
-        });
-
-        if (!product) {
-          console.error(`Product not found for productId ${item.productId}`);
-          throw new Error(`Product not found for productId ${item.productId}`);
-        }
-
-        const warehouses = await Warehouse.findAll();
-
-        const mutations = await Promise.all(
-          warehouses.map(async (warehouse) => {
-            try {
-              const latestMutation = await Mutation.findOne({
-                attributes: ["stock"],
-                where: {
-                  productId: product.id,
-                  warehouseId: warehouse.id,
-                },
-                order: [["createdAt", "DESC"]],
-                limit: 1,
-              });
-
-              return {
-                warehouseId: warehouse.id,
-                warehouseName: warehouse.name,
-                totalStock: latestMutation ? latestMutation.stock : 0,
-              };
-            } catch (mutationError) {
-              console.error(`Error in getProductStock for productId ${product.id} and warehouseId ${warehouse.id}:`, mutationError);
-              throw mutationError;
-            }
-          })
-        );
-
-        // Calculate the total stock from all warehouses
-        const totalStockAllWarehouses = mutations.reduce((total, mutation) => total + mutation.totalStock, 0);
-
-        return {
-          ...product.toJSON(),
-          Mutations: mutations || [],
-          totalStockAllWarehouses: totalStockAllWarehouses || 0,
-        };
-      } catch (error) {
-        console.error(`Error in getProductStock for productId ${item.productId}:`, error);
-        throw error; // Rethrow the error to be caught by the caller
-      }
-    })
-  );
-};
-
 exports.createOrder = async (req, res) => {
   try {
     const { id: userId } = req.user;
     const { addressId, warehouseId, productOnCart, shippingCost, paymentBy } = req.body;
 
-    // Calculate product stock
-    const productStock = await getProductStock(productOnCart);
-
-    // Check if the quantity in the order is sufficient based on available stock
-    const insufficientStockProducts = [];
-    for (const item of productOnCart) {
-      const product = productStock.find((p) => p.id === item.productId);
-      const totalStockForProduct = product ? product.totalStockAllWarehouses : 0;
-
-      if (item.quantity > totalStockForProduct) {
-        insufficientStockProducts.push({
-          productId: item.productId,
-          productName: product.name,
-          requestedQuantity: item.quantity,
-          availableStock: totalStockForProduct,
-        });
-
-        // updating cartItem quantity
-
-        const cartItem = await CartItem.findOne({
-          where: { productId: item.productId, cartId: item.cartId },
-        });
-
-        await cartItem.update({ quantity: totalStockForProduct });
-      }
-    }
-
-    if (insufficientStockProducts.length > 0) {
-      return res.status(400).json({
-        ok: false,
-        message: "Insufficient stock for some products in the order, redirecting you to the cart page",
-      });
-    }
-
-    // If there is sufficient stock, continue with order creation
-
     const order = await Order.create({
       userId,
       warehouseId,
       paymentBy,
-      status: "unpaid",
+      status: "waiting-for-payment",
     });
 
     const orderItems = await Promise.all(
@@ -456,16 +366,17 @@ exports.createOrder = async (req, res) => {
     await order.update({ totalPrice: totalOrderPrice });
 
     // Create shipment
+
     const shipment = await Shipment.create({
       name: shippingCost[0], // Accessing the shipping method directly
       cost: shippingCost[1], // Accessing the cost directly
-      addressId,
+      addressId: addressId,
     });
 
     // Update shipmentId in Order table
     await order.update({ shipmentId: shipment.id });
 
-    // Delete cart
+    // delete cart
     const cartIdsToDelete = productOnCart.map((item) => item.cartId);
 
     await CartItem.destroy({
@@ -658,6 +569,7 @@ exports.getOrderLists = async (req, res) => {
   }
 };
 
+
 exports.automaticCancelUnpaidOrder = async (req, res) => {
   try {
     // Fetch unpaid orders
@@ -699,321 +611,5 @@ exports.automaticCancelUnpaidOrder = async (req, res) => {
     return console.log("Unpaid expired orders cancelled successfully");
   } catch (error) {
     console.error(error);
-  }
-};
-
-// Function to find the nearest warehouse using Haversine formula
-function findNearestWarehouse(sourceLatitude, sourceLongitude, warehouses, requiredStock) {
-  const earthRadius = 6371; // Radius of the earth in km
-
-  // Helper function to convert degrees to radians
-  function toRad(degrees) {
-    return (degrees * Math.PI) / 180;
-  }
-
-  let nearestWarehouse = null;
-  let minDistance = Infinity;
-  for (const warehouse of warehouses) {
-    const { latitude, longitude } = warehouse.WarehouseAddress;
-    const { stock } = warehouse.Mutations[0] || { stock: 0 };
-
-    // Haversine formula (menentukan jarak antara dua titik pada permukaan bola)
-    const dLat = toRad(latitude - sourceLatitude); // Calculate the difference in latitude in radians
-    const dLon = toRad(longitude - sourceLongitude); // Calculate the difference in longitude in radians
-
-    // Variable to calculate the distance
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) + // kuadrat setengah jarak lingkaran besar sepanjang garis lintang
-      Math.cos(toRad(sourceLatitude)) * Math.cos(toRad(latitude)) * Math.sin(dLon / 2) * Math.sin(dLon / 2); // kuadrat setengah jarak lingkaran sepanjang garis bujur
-
-    const centralAngle = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); // Menghitung sudut sentral antara dua titik pada lingkaran besar
-    const distance = earthRadius * centralAngle; // Menghitung jarak antara dua titik pada permukaan bola
-
-    if (stock >= requiredStock && distance < minDistance) {
-      // check if the stock is greater than or equal to the required stock
-      minDistance = distance;
-      nearestWarehouse = warehouse;
-    }
-  }
-
-  return nearestWarehouse;
-}
-
-// Function to update the source warehouse stock
-async function updateSourceWarehouseStock(productId, warehouseId, destinationWarehouseId, quantity, sourceWarehouseAdminId) {
-  const t = await sequelize.transaction();
-  try {
-    // get the latest mutation from the source warehouse in order to get the stock
-    const findLatestMutationSourceWarehouse = await Mutation.findOne({
-      where: {
-        productId,
-        warehouseId,
-        status: "success",
-      },
-      order: [["createdAt", "DESC"]],
-      limit: 1,
-      transaction: t,
-    });
-
-    const destinationWarehouseData = await Warehouse.findOne({
-      where: {
-        id: destinationWarehouseId,
-      },
-      attributes: ["name"],
-      transaction: t,
-    });
-
-    let sourceWarehouseStock = findLatestMutationSourceWarehouse.stock || 0;
-    let newStock = sourceWarehouseStock + quantity;
-
-    // update the source warehouse stock by creating a new mutation
-    const mutation = await Mutation.create(
-      {
-        productId,
-        warehouseId,
-        destinationWarehouseId,
-        previousStock: sourceWarehouseStock,
-        mutationQuantity: quantity,
-        mutationType: "add",
-        adminId: sourceWarehouseAdminId,
-        stock: newStock,
-        status: "success",
-        isManual: false,
-        description: `Auto request, get new stock automatically from ${destinationWarehouseData.name}.`,
-      },
-      {
-        transaction: t,
-      }
-    );
-
-    await Journal.create(
-      {
-        mutationId: mutation.id,
-        productId,
-        warehouseId,
-        destinationWarehouseId,
-        previousStock: sourceWarehouseStock,
-        mutationQuantity: quantity,
-        mutationType: "add",
-        adminId: sourceWarehouseAdminId,
-        stock: newStock,
-        status: "success",
-        isManual: false,
-        description: `Auto request, get new stock automatically from ${destinationWarehouseData.name}.`,
-      },
-      {
-        transaction: t,
-      }
-    );
-
-    await t.commit();
-    return mutation;
-  } catch (error) {
-    await t.rollback();
-    throw error;
-  }
-}
-
-exports.confirmPaymentProofUser = async (req, res) => {
-  const t = await sequelize.transaction();
-  const { orderId, productId } = req.body;
-
-  try {
-    const orderItem = await OrderItem.findOne({
-      where: {
-        orderId,
-      },
-      include: [
-        {
-          model: Order,
-          where: {
-            status: "waiting-for-confirmation",
-          },
-          include: [
-            {
-              model: Warehouse,
-              include: [
-                {
-                  model: Mutation,
-                  where: {
-                    status: "success",
-                    productId,
-                  },
-                  order: [["createdAt", "DESC"]],
-                  limit: 1,
-                },
-                {
-                  model: WarehouseAddress,
-                  attributes: ["latitude", "longitude"],
-                },
-              ],
-            },
-          ],
-        },
-      ],
-      transaction: t,
-    });
-
-    if (!orderItem) {
-      await t.rollback();
-      return res.status(404).json({
-        ok: false,
-        message: "Order not found",
-        detail: "Order with status waiting-for-confirmation not found",
-      });
-    }
-
-    orderItem.Order.status = "processed";
-    await orderItem.Order.save({ transaction: t });
-
-    const stockProductAtCurrentWarehouse = orderItem.Order.Warehouse.Mutations[0].stock;
-    const warehouselatitude = orderItem.Order.Warehouse.WarehouseAddress.latitude;
-    const warehouseLongitude = orderItem.Order.Warehouse.WarehouseAddress.longitude;
-    const orderQuantity = orderItem.quantity;
-    const requiredStock = orderQuantity - stockProductAtCurrentWarehouse;
-    const sourceWarehouseName = orderItem.Order.Warehouse.name;
-    const sourceWarehouseId = orderItem.Order.Warehouse.id;
-    const sourceWarehouseAdminId = orderItem.Order.Warehouse.adminId;
-
-    const allWarehouses = await Warehouse.findAll({
-      attributes: ["id", "name", "warehouseAddressId"],
-      include: [
-        {
-          model: WarehouseAddress,
-          attributes: ["street", "city", "province", "latitude", "longitude"],
-        },
-        {
-          model: Mutation,
-          attributes: ["id", "stock"],
-          where: {
-            status: "success",
-            productId,
-          },
-          order: [["createdAt", "DESC"]],
-          limit: 1,
-        },
-      ],
-      transaction: t,
-    });
-
-    if (orderItem.Order.status === "processed") {
-      if (orderQuantity > stockProductAtCurrentWarehouse) {
-        // insufficient stock
-        const nearestWarehouse = findNearestWarehouse(warehouselatitude, warehouseLongitude, allWarehouses, orderQuantity);
-
-        if (!nearestWarehouse) {
-          await t.rollback();
-          return res.status(404).json({
-            ok: false,
-            message: "Nearest warehouse with sufficient stock not found",
-          });
-        }
-
-        // Create mutation for update stock at source warehouse
-        const newMutationForSourceWarehouse = await updateSourceWarehouseStock(productId, sourceWarehouseId, nearestWarehouse.id, requiredStock, sourceWarehouseAdminId);
-
-        // Create mutation for update stock at destination warehouse
-        let currentDestinationWarehouseStock = nearestWarehouse.Mutations[0].stock;
-
-        const newMutationForDestinationWarehouse = await Mutation.create(
-          {
-            productId,
-            warehouseId: nearestWarehouse.id,
-            destinationWarehouseId: nearestWarehouse.id,
-            mutationQuantity: requiredStock,
-            previousStock: currentDestinationWarehouseStock,
-            mutationType: "subtract",
-            adminId: sourceWarehouseAdminId,
-            stock: (currentDestinationWarehouseStock -= requiredStock),
-            status: "success",
-            isManual: false,
-            description: `Auto request, stock subtracted automatically to ${sourceWarehouseName} for user order.`,
-          },
-          { transaction: t }
-        );
-
-        await Journal.create(
-          {
-            productId,
-            warehouseId: nearestWarehouse.id,
-            destinationWarehouseId: nearestWarehouse.id,
-            mutationId: newMutationForDestinationWarehouse.id,
-            mutationQuantity: requiredStock,
-            previousStock: newMutationForDestinationWarehouse.previousStock,
-            mutationType: "subtract",
-            adminId: sourceWarehouseAdminId,
-            stock: newMutationForDestinationWarehouse.stock,
-            status: "success",
-            isManual: false,
-            description: `Auto request, stock subtracted automatically to ${sourceWarehouseName} for user order.`,
-          },
-          { transaction: t }
-        );
-
-        await t.commit();
-        return res.status(200).json({
-          ok: true,
-          message: "Payment proof confirmed successfully",
-          detail: {
-            orderItem,
-            newMutationForSourceWarehouse,
-          },
-        });
-      }
-      // sufficient stock
-      // Create mutation for update stock at source warehouse
-      const newMutationForSourceWarehouse = await Mutation.create(
-        {
-          productId,
-          warehouseId: sourceWarehouseId,
-          destinationWarehouseId: sourceWarehouseId,
-          mutationQuantity: orderQuantity,
-          previousStock: stockProductAtCurrentWarehouse,
-          mutationType: "subtract",
-          adminId: sourceWarehouseAdminId,
-          stock: stockProductAtCurrentWarehouse - orderQuantity,
-          status: "success",
-          isManual: false,
-          description: "Auto request, stock subtracted automatically for user order.",
-        },
-        { transaction: t }
-      );
-
-      await Journal.create(
-        {
-          mutationId: newMutationForSourceWarehouse.id,
-          productId,
-          warehouseId: sourceWarehouseId,
-          destinationWarehouseId: sourceWarehouseId,
-          mutationId: newMutationForSourceWarehouse.id,
-          mutationQuantity: orderQuantity,
-          previousStock: stockProductAtCurrentWarehouse,
-          mutationType: "subtract",
-          adminId: sourceWarehouseAdminId,
-          stock: stockProductAtCurrentWarehouse - orderQuantity,
-          status: "success",
-          isManual: false,
-          description: "Auto request, stock subtracted automatically for user order.",
-        },
-        { transaction: t }
-      );
-
-      await t.commit();
-      return res.status(200).json({
-        ok: true,
-        message: "Payment proof confirmed successfully",
-        detail: {
-          orderItem,
-          newMutationForSourceWarehouse,
-        },
-      });
-    }
-  } catch (error) {
-    console.error(error);
-    await t.rollback();
-    return res.status(500).json({
-      ok: false,
-      message: "Internal server error",
-    });
   }
 };

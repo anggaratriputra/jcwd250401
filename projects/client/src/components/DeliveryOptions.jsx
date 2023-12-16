@@ -103,15 +103,6 @@ const DeliveryOptions = ({ handlePaymentOpen, onShippingCost, nearestWarehouseId
     handleEditModalClose();
   };
 
-  const formatToRupiah = (price) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      maximumFractionDigits: 0,
-      minimumFractionDigits: 0,
-    }).format(price);
-  };
-
   return (
     <div className="mt-2 lg:mt-4 p-6 flex flex-col h-62 border rounded-md lg:w-[48vw] bg-white">
       <div className="mb-4">
@@ -155,7 +146,7 @@ const DeliveryOptions = ({ handlePaymentOpen, onShippingCost, nearestWarehouseId
           </div>
           {shippingCost?.length > 0 && shippingCost[0]?.costs.length > 0 && (
             <div className="flex flex-col justify-center items-end">
-              <p className="font-semibold text-gray-600 text-sm">{formatToRupiah(shippingCost[0]?.costs[0]?.cost[0]?.value)}</p>
+              <p className="font-semibold text-gray-600 text-sm">Rp {shippingCost[0]?.costs[0]?.cost[0]?.value}</p>
             </div>
           )}
         </div>
@@ -185,7 +176,7 @@ const DeliveryOptions = ({ handlePaymentOpen, onShippingCost, nearestWarehouseId
             </div>
             {shippingCost?.length > 0 && shippingCost[0]?.costs?.length > 0 && (
               <div className="flex flex-col justify-center items-end">
-                <p className="font-semibold text-gray-600 text-sm">{formatToRupiah(shippingCost[0]?.costs[1]?.cost[0]?.value)}</p>
+                <p className="font-semibold text-gray-600 text-sm">Rp {shippingCost[0]?.costs[1]?.cost[0]?.value}</p>
               </div>
             )}
           </div>

@@ -19,7 +19,6 @@ import { useSelector } from "react-redux";
 
 
 function Product() {
-  document.title = "RAINS - Product Dashboard";
   const navList = ["All Products", "Category", "Archive"];
   const [openProductModal, setOpenProductModal] = useState(false);
   const [openCategoryModal, setOpenCategoryModal] = useState(false);

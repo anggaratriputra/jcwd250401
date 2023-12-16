@@ -9,7 +9,6 @@ import DeliveryOptions from "../components/DeliveryOptions"; // Import the Deliv
 import Footer from "../components/Footer";
 import PaymentOptions from "../components/PaymentOptions";
 
-
 function CheckoutPage() {
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [shippingCost, setShippingCost] = useState([]);
@@ -17,8 +16,6 @@ function CheckoutPage() {
   const [warehouseId, setWarehouseId] = useState(null);
   const [totalPrice, setTotalPrice] = useState(0);
   const [totalQuantity, setTotalQuantity] = useState(0);
-
-  document.title = "RAINS - Checkout";
 
   useEffect(() => {
     // Scroll to the top when the component is first rendered

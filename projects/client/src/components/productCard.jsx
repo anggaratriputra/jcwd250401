@@ -14,8 +14,6 @@ import addToCart from "../api/cart/addToCart";
 import { AiOutlineLoading } from "react-icons/ai";
 import AddToCartConfirmation from "./AddToCartConfirmation";
 import { addToCartItems } from "../slices/cartSlices";
-import Skeleton from "react-loading-skeleton";
-import "react-loading-skeleton/dist/skeleton.css";
 
 function ProductCard() {
   const { gender, mainCategory, subCategory, productName } = useParams();
@@ -30,15 +28,7 @@ function ProductCard() {
   const dispatch = useDispatch();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConfirmationOpen, setConfirmationOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const loadingTimeout = setTimeout(() => {
-      setIsLoading(false);
-    }, 1500);
-
-    return () => clearTimeout(loadingTimeout); // Clear the timeout on component unmount
-  }, []);
+  const [isLoading, setIsLoading] = useState(false);
 
   const formatSubCategory = (subCategory) => {
     const words = subCategory.split("-");
@@ -212,130 +202,7 @@ function ProductCard() {
 
   return (
     <div className="flex lg:flex-row flex-col px-6 lg:px-32 space-y-6 lg:space-y-20 scrollbar-hide">
-      {isLoading ? (
-        <>
-          <div className="hidden lg:flex flex-col w-full mt-14 ">
-            <div className="flex flex-row">
-              <div className="flex space-x-5">
-                <SimpleGrid columns={2} spacing={5} h="184px">
-                  {Array.from({ length: 4 }, (_, index) => (
-                    <div className="w-[82px]">
-                      <Skeleton height="82px" />
-                    </div>
-                  ))}
-                </SimpleGrid>
-                <div className="w-[480px]">
-                  <Skeleton height="480px" />
-                </div>
-              </div>
-              <div className="flex flex-col space-y-4 ml-28 w-[30vw]">
-                <div>
-                  <Skeleton height="40px" width="300px" />
-                </div>
-                <div>
-                  <div>
-                    <Skeleton height="24px" width="400px" count={3} />
-                  </div>
-                  <div>
-                    <Skeleton height="24px" width="300px" />
-                  </div>
-                </div>
-                <div>
-                  <div>
-                    <Skeleton height="24px" width="200px" />
-                  </div>
-                  <div>
-                    <Skeleton height="24px" width="200px" />
-                  </div>
-                </div>
-                <div className="flex space-x-28">
-                  <div>
-                    <Skeleton height="40px" width="100px" />
-                  </div>
-                  <div>
-                    <Skeleton height="40px" width="190px" />
-                  </div>
-                </div>
-                <div className="flex space-x-4">
-                  <div>
-                    <Skeleton height="40px" width="190px" />
-                  </div>
-                  <div>
-                    <Skeleton height="40px" width="190px" />
-                  </div>
-                </div>
-                <div className="flex flex-col space-y-2 w-[400px]">
-                  <div>
-                    <Skeleton height="40px" />
-                  </div>
-                  <div>
-                    <Skeleton height="40px" />
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="mt-16">
-              <Skeleton height="30px" width="200px" />
-            </div>
-          </div>
-          <div className="flex lg:hidden flex-col w-full mt-14 ">
-            <div className="flex flex-col">
-              <div className="flex flex-col items-center space-y-4">
-                <div className="w-[350px]">
-                  <Skeleton height="480px" />
-                </div>
-                <SimpleGrid columns={5} spacing={2}>
-                  {Array.from({ length: 5 }, (_, index) => (
-                    <div className="w-[62px]">
-                      <Skeleton height="82px" />
-                    </div>
-                  ))}
-                </SimpleGrid>
-              </div>
-              <div className="flex flex-col space-y-4 mt-4 w-[30vw]">
-                <div>
-                  <Skeleton height="40px" width="300px" />
-                </div>
-                <div>
-                  <div>
-                    <Skeleton height="24px" width="360px" count={3} />
-                  </div>
-                  <div>
-                    <Skeleton height="24px" width="300px" />
-                  </div>
-                </div>
-                <div>
-                  <div>
-                    <Skeleton height="24px" width="200px" />
-                  </div>
-                  <div>
-                    <Skeleton height="24px" width="200px" />
-                  </div>
-                </div>
-                <div className="flex space-x-4">
-                  <div>
-                    <Skeleton height="40px" width="190px" />
-                  </div>
-                  <div>
-                    <Skeleton height="40px" width="190px" />
-                  </div>
-                </div>
-                <div className="flex flex-col space-y-2 w-[360px]">
-                  <div>
-                    <Skeleton height="40px" />
-                  </div>
-                  <div>
-                    <Skeleton height="40px" />
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="mt-16">
-              <Skeleton height="30px" width="200px" />
-            </div>
-          </div>
-        </>
-      ) : selectedProduct.length !== 0 ? (
+      {selectedProduct.length !== 0 ? (
         <>
           <div className="hidden lg:flex w-full mt-14 gap-2">
             <div className="flex flex-col w-[58vw] lg:h-[80vh] overflow-y-auto scrollbar-hide space-y-20">
@@ -621,7 +488,6 @@ function ProductCard() {
           <span className="text-xl ">No product matches. </span>
         </div>
       )}
-
       <AddToCartConfirmation isOpen={isConfirmationOpen} onClose={() => setConfirmationOpen(false)} quantity={quantity} price={selectedProduct[0]?.price} />
     </div>
   );

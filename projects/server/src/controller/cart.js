@@ -1,5 +1,5 @@
-const { Op, Sequelize } = require("sequelize");
-const { User, Cart, CartItem, Product, ProductImage, Mutation, Warehouse } = require("../models");
+const { Op } = require("sequelize");
+const { User, Cart, CartItem, Product, ProductImage, Mutation } = require("../models");
 
 exports.handleAddToCart = async (req, res) => {
   const { id: userId } = req.user;
@@ -100,84 +100,25 @@ exports.handleAddToCart = async (req, res) => {
   }
 };
 
-const getProductStock = async (products) => {
-  return await Promise.all(
-    products.map(async (item) => {
-      try {
-        const product = await Product.findOne({
-          where: { id: item.productId },
-          attributes: ["id", "price", "name", "description", "gender", "weight", "sku", "createdAt", "updatedAt"],
-          include: [
-            {
-              model: ProductImage,
-              as: "productImages",
-              attributes: ["id", "imageUrl"],
-            },
-          ],
-        });
-
-        if (!product) {
-          console.error(`Product not found for productId ${item.productId}`);
-          throw new Error(`Product not found for productId ${item.productId}`);
-        }
-
-        const warehouses = await Warehouse.findAll();
-
-        const mutations = await Promise.all(
-          warehouses.map(async (warehouse) => {
-            try {
-              const latestMutation = await Mutation.findOne({
-                attributes: ["stock"],
-                where: {
-                  productId: product.id,
-                  warehouseId: warehouse.id,
-                },
-                order: [["createdAt", "DESC"]],
-                limit: 1,
-              });
-
-              return {
-                warehouseId: warehouse.id,
-                warehouseName: warehouse.name,
-                totalStock: latestMutation ? latestMutation.stock : 0,
-              };
-            } catch (mutationError) {
-              console.error(`Error in getProductStock for productId ${product.id} and warehouseId ${warehouse.id}:`, mutationError);
-              throw mutationError;
-            }
-          })
-        );
-
-        // Calculate the total stock from all warehouses
-        const totalStockAllWarehouses = mutations.reduce((total, mutation) => total + mutation.totalStock, 0);
-
-        return {
-          ...product.toJSON(),
-          Mutations: mutations || [],
-          totalStockAllWarehouses: totalStockAllWarehouses || 0,
-        };
-      } catch (error) {
-        console.error(`Error in getProductStock for productId ${item.productId}:`, error);
-        throw error; // Rethrow the error to be caught by the caller
-      }
-    })
-  );
-};
-
-const calculateProductStock = async (product) => {
-  const productStock = await getProductStock([
-    {
-      productId: product.id,
-    },
-  ]);
-
-  return productStock[0];
-};
-
 exports.handleGetCart = async (req, res) => {
   const { id: userId } = req.user;
 
   try {
+    if (!userId) {
+      return res.status(403).json({
+        ok: false,
+        message: "Please login first.",
+      });
+    }
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({
+        ok: false,
+        message: "User not found",
+      });
+    }
+
     const cart = await Cart.findOne({
       where: {
         userId,
@@ -196,20 +137,22 @@ exports.handleGetCart = async (req, res) => {
                 },
                 {
                   model: Mutation,
-                  attributes: ["stock", "mutationType"],
-                  order: [["createdAt", "DESC"]],
-                },
+                  attributes: ["stock"],
+                  order: [['createdAt', 'DESC']],
+                  limit: 1
+                }
               ],
             },
           ],
         },
       ],
       order: [
-        [CartItem, "createdAt", "DESC"],
-        ["createdAt", "DESC"],
+        [CartItem, 'createdAt', 'DESC'],
+        ['createdAt', 'DESC'],
       ],
     });
 
+    // Check if cart is found
     if (!cart) {
       return res.status(404).json({
         ok: false,
@@ -217,23 +160,16 @@ exports.handleGetCart = async (req, res) => {
       });
     }
 
-    const formattedCart = {
-      ...cart.toJSON(),
-      CartItems: await Promise.all(
-        cart.CartItems.map(async (item) => {
-          const product = await calculateProductStock(item.Product);
-          return {
-            ...item.toJSON(),
-            Product: product,
-          };
-        })
-      ),
-    };
+    // Calculate total stock for each product in the cart
+    cart.CartItems.forEach(item => {
+      const mutations = item.Product.Mutations;
+      item.Product.totalStock = mutations.reduce((total, mutation) => total + mutation.stock, 0);
+    });
 
     return res.status(200).json({
       ok: true,
       message: "Success",
-      detail: formattedCart,
+      detail: cart,
     });
   } catch (error) {
     console.error(error);
@@ -246,143 +182,144 @@ exports.handleGetCart = async (req, res) => {
 };
 
 exports.handleDeleteCartItem = async (req, res) => {
-  const { id: userId } = req.user;
-  const { productId } = req.params; // Assuming productId is passed as a URL parameter
-
-  try {
-    if (!userId) {
-      return res.status(403).json({
-        ok: false,
-        message: "Please login first.",
-      });
-    }
-
-    const user = await User.findByPk(userId);
-    if (!user) {
-      return res.status(404).json({
-        ok: false,
-        message: "User not found",
-      });
-    }
-
-    const cart = await Cart.findOne({
-      where: {
-        userId,
-      },
-      include: [
-        {
-          model: CartItem,
+    const { id: userId } = req.user;
+    const { productId } = req.params; // Assuming productId is passed as a URL parameter
+  
+    try {
+      if (!userId) {
+        return res.status(403).json({
+          ok: false,
+          message: "Please login first.",
+        });
+      }
+  
+      const user = await User.findByPk(userId);
+      if (!user) {
+        return res.status(404).json({
+          ok: false,
+          message: "User not found",
+        });
+      }
+  
+      const cart = await Cart.findOne({
+        where: {
+          userId,
         },
-      ],
-    });
-
-    // Check if cart is found
-    if (!cart) {
-      return res.status(404).json({
-        ok: false,
-        message: "Cart not found",
+        include: [
+          {
+            model: CartItem,
+          },
+        ],
       });
-    }
-
-    const cartItem = await CartItem.findOne({
-      where: {
-        cartId: cart.id,
-        productId: productId,
-      },
-    });
-
-    if (!cartItem) {
-      return res.status(404).json({
-        ok: false,
-        message: "Cart item not found",
-      });
-    }
-
-    await cartItem.destroy();
-
-    return res.status(200).json({
-      ok: true,
-      message: "Items deleted successfully",
-      detail: cart,
-    });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      ok: false,
-      message: "Internal server error",
-      detail: String(error),
-    });
-  }
-};
-
-exports.handleUpdateCartItem = async (req, res) => {
-  const { id: userId } = req.user;
-  const { productId } = req.params; // Assuming productId is passed as a URL parameter
-  const { quantity } = req.body; // Assuming quantity is passed as a request body
-
-  try {
-    if (!userId) {
-      return res.status(403).json({
-        ok: false,
-        message: "Please login first.",
-      });
-    }
-
-    const user = await User.findByPk(userId);
-    if (!user) {
-      return res.status(404).json({
-        ok: false,
-        message: "User not found",
-      });
-    }
-
-    const cart = await Cart.findOne({
-      where: {
-        userId,
-      },
-      include: [
-        {
-          model: CartItem,
+  
+      // Check if cart is found
+      if (!cart) {
+        return res.status(404).json({
+          ok: false,
+          message: "Cart not found",
+        });
+      }
+  
+      const cartItem = await CartItem.findOne({
+        where: {
+          cartId: cart.id,
+          productId: productId,
         },
-      ],
-    });
-
-    // Check if cart is found
-    if (!cart) {
-      return res.status(404).json({
+      });
+  
+      if (!cartItem) {
+        return res.status(404).json({
+          ok: false,
+          message: "Cart item not found",
+        });
+      }
+  
+      await cartItem.destroy();
+  
+      return res.status(200).json({
+        ok: true,
+        message: "Items deleted successfully",
+        detail: cart,
+      });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({
         ok: false,
-        message: "Cart not found",
+        message: "Internal server error",
+        detail: String(error),
       });
     }
+  };
 
-    const cartItem = await CartItem.findOne({
-      where: {
-        cartId: cart.id,
-        productId: productId,
-      },
-    });
 
-    if (!cartItem) {
-      return res.status(404).json({
+  exports.handleUpdateCartItem = async (req, res) => {
+    const { id: userId } = req.user;
+    const { productId } = req.params; // Assuming productId is passed as a URL parameter
+    const { quantity } = req.body; // Assuming quantity is passed as a request body
+  
+    try {
+      if (!userId) {
+        return res.status(403).json({
+          ok: false,
+          message: "Please login first.",
+        });
+      }
+  
+      const user = await User.findByPk(userId);
+      if (!user) {
+        return res.status(404).json({
+          ok: false,
+          message: "User not found",
+        });
+      }
+  
+      const cart = await Cart.findOne({
+        where: {
+          userId,
+        },
+        include: [
+          {
+            model: CartItem,
+          },
+        ],
+      });
+  
+      // Check if cart is found
+      if (!cart) {
+        return res.status(404).json({
+          ok: false,
+          message: "Cart not found",
+        });
+      }
+  
+      const cartItem = await CartItem.findOne({
+        where: {
+          cartId: cart.id,
+          productId: productId,
+        },
+      });
+  
+      if (!cartItem) {
+        return res.status(404).json({
+          ok: false,
+          message: "Cart item not found",
+        });
+      }
+  
+      cartItem.quantity = quantity;
+      await cartItem.save();
+  
+      return res.status(200).json({
+        ok: true,
+        message: "Items updated successfully",
+        detail: cart,
+      });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({
         ok: false,
-        message: "Cart item not found",
+        message: "Internal server error",
+        detail: String(error),
       });
     }
-
-    cartItem.quantity = quantity;
-    await cartItem.save();
-
-    return res.status(200).json({
-      ok: true,
-      message: "Items updated successfully",
-      detail: cart,
-    });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      ok: false,
-      message: "Internal server error",
-      detail: String(error),
-    });
-  }
-};
+  };

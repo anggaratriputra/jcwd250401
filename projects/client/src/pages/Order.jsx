@@ -9,41 +9,22 @@ import { PaymentProofModal } from "../components/PaymentProofModal";
 import getProfile from "../api/profile/getProfile";
 import getUserOrder from "../api/order/getUserOrder";
 import { Box, Button, Flex, Text } from "@chakra-ui/react";
-import Skeleton from "react-loading-skeleton";
-import "react-loading-skeleton/dist/skeleton.css";
 
 export const Order = () => {
   let isLoggedIn = JSON.parse(localStorage.getItem("isLoggedIn"));
   const listsMenu = ["Profile", "Address Book", "My Order", "Change Password"];
-  const orderStatus = ["All", "Unpaid", "Waiting for Confirmation", "Processed", "On Delivery", "Delivered", "Cancelled"];
+  const orderStatus = ["All", "Waiting for Payment", "Waiting for Payment Confirmation", "On Process", "On Delivery", "Delivered", "Cancelled"];
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [openModalProof, setOpenModalProof] = useState(false);
   const [orderLists, setOrderLists] = useState([]);
   const [page, setPage] = useState(1);
   const size = 5;
-  const [sort, setSort] = useState("date-asc");
+  const [sort, setSort] = useState("date-desc");
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [totalPages, setTotalPages] = useState(1);
   const location = useLocation();
-  const [isLoading, setIsLoading] = useState(true);
-  const [remainingTimes, setRemainingTimes] = useState({});
-
-  useEffect(() => {
-    const loadingTimeout = setTimeout(() => {
-      setIsLoading(false);
-    }, 1500);
-
-    return () => clearTimeout(loadingTimeout); // Clear the timeout on component unmount
-  }, []);
-
-  useEffect(() => {
-    // Scroll to the top when the component is first rendered
-    window.scrollTo(0, 0);
-  }, []);
-
-  document.title = "RAINS - My Order";
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -72,12 +53,12 @@ export const Order = () => {
     const queryParams = new URLSearchParams(location.search);
     queryParams.set("status", status);
 
-    setSelectedStatus(status);
-
     navigate({
       pathname: location.pathname,
       search: queryParams.toString(),
     });
+
+    setSelectedStatus(status);
   };
 
   const handleSortChange = (e) => {
@@ -159,52 +140,11 @@ export const Order = () => {
   };
 
   const sortingOptions = [
-    { label: "Oldest", value: "date-desc" },
-    { label: "Latest", value: "date-asc" },
-    { label: "Lowest Price", value: "price-asc" },
-    { label: "Highest Price", value: "price-desc" },
+    { label: "Date DESC", value: "date-desc" },
+    { label: "Date ASC", value: "date-asc" },
+    { label: "Price ASC", value: "price-asc" },
+    { label: "Price DESC", value: "price-desc" },
   ];
-
-  const getStatusLabel = (status) => {
-    // Use a regular expression to capitalize the first letter of each word
-    return status.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
-  };
-
-  const calculateTimeRemaining = (createdAt) => {
-    const currentTime = new Date().getTime();
-    const updatedAtTime = new Date(createdAt).getTime();
-    const timeDifference = updatedAtTime + 24 * 60 * 60 * 1000 - currentTime;
-
-    const hours = Math.floor((timeDifference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((timeDifference % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((timeDifference % (1000 * 60)) / 1000);
-
-    return { hours, minutes, seconds };
-  };
-
-  useEffect(() => {
-    // Calculate and update remaining time for each order
-    const updateRemainingTimes = () => {
-      const updatedRemainingTimes = {};
-      orderLists.forEach((orderItem) => {
-        if (orderItem.status === "unpaid") {
-          updatedRemainingTimes[orderItem.orderId] = calculateTimeRemaining(orderItem.createdAt);
-        }
-      });
-      setRemainingTimes(updatedRemainingTimes);
-    };
-
-    const timerInterval = setInterval(updateRemainingTimes, 1000);
-
-    // Initial calculation
-    updateRemainingTimes();
-
-    return () => clearInterval(timerInterval); // Clear the interval on component unmount
-  }, [orderLists]);
-
-  const formatTime = (value) => {
-    return value < 10 ? `0${value}` : value;
-  };
 
   return (
     <>
@@ -224,13 +164,12 @@ export const Order = () => {
 
         <div className="w-full min-h-[40vh] lg:w-[60vw] overflow-y-hidden shadow-md">
           {isLoggedIn ? (
-            <div className="px-6 py-4 w-full">
+            <div className="p-4 w-full">
               <div id="orderStatus" className="hidden sm:flex flex-col">
                 <span className="font-bold text-2xl">Status</span>
-
-                <div className="flex justify-between">
-                  <div className="w-[40vw] overflow-x-auto ">
-                    <div className="flex w-[55vw]">
+                <div className="flex justify-between ">
+                  <div className="w-[43vw] overflow-x-auto ">
+                    <div className="flex w-[65vw]">
                       {orderStatus.map((status, index) => {
                         const joinedStatus = status.toLowerCase().replace(/\s/g, "-");
                         const isSelected = selectedStatus === joinedStatus;
@@ -275,113 +214,48 @@ export const Order = () => {
                   })}
                 </select>
               </div>
-              <div id="orderList" className="mt-4 flex flex-col overflow-y-auto space-y-4">
-                {isLoading ? (
-                  // Display the skeleton loading effect during the loading period
-                  Array.from({ length: 5 }, (_, index) => (
-                    <div key={index} className="border border-gray-200 rounded-md px-4 lg:px-6 py-4 lg:py-2">
-                      <div className="flex lg:flex-row flex-col justify-between items-center">
-                        <div className="w-[100px] lg:w-[160px]">
-                          <Skeleton height={24} />
-                        </div>
-                        <div className="w-[100px] lg:w-[160px]">
-                          <Skeleton height={24} />
-                        </div>
-                      </div>
-                      <div className="mt-4 flex lg:flex-row  justify-between">
-                        <div className="flex lg:flex-row flex-col justify-between w-full">
-                          <div className="flex flex-col space-y-4 mb-4">
-                            <div className="flex flex-1 flex-row items-center justify-between lg:justify-normal lg:space-x-4 space-x-6 lg:space-y-0">
-                              <div className="w-[100px] lg:w-[100px]">
-                                <Skeleton height="100px" />
-                              </div>
-                              <div className="flex flex-1 flex-col text-sm space-y-2">
-                                <div className="w-[250px] lg:w-[300px]">
-                                  <Skeleton height={20} count={2} />
-                                </div>
-                                <div className="w-[250px] lg:w-[260px]">
-                                  <Skeleton height={20} count={2} />
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="hidden lg:flex flex-col">
-                            <div className="w-[50px] lg:w-[200px]">
-                              <Skeleton height={20} count={3} />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : orderLists.length > 0 ? (
-                  orderLists.map((orderItem, index) => {
-                    const createdAt = new Date(orderItem.createdAt);
-                    const date = `${createdAt.getDate()} ${createdAt.toLocaleString("default", { month: "short" })} ${createdAt.getFullYear()}`;
-                    const time = createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-                    const remainingTime = remainingTimes[orderItem.orderId];
+              <div id="orderList" className="mt-4 flex flex-col overflow-y-auto space-y-4">
+                {orderLists.length > 0 ? (
+                  orderLists.map((orderItem, index) => {
+                    const updatedAt = new Date(orderItem.updatedAt);
+                    const date = `${updatedAt.getDate()} ${updatedAt.toLocaleString("default", { month: "short" })} ${updatedAt.getFullYear()}`;
+                    const time = updatedAt.toLocaleTimeString();
 
                     return (
-                      <div key={index} className="border border-gray-200 rounded-md px-4 lg:px-6 py-4 lg:py-4 bg-gray-50">
+                      <div key={index} className="border border-gray-200 rounded-md px-6 py-4 bg-gray-100">
                         <div className="flex justify-between items-center">
-                          <div className="flex space-x-4 items-center ">
-                            <span className="bg-gray-900 text-gray-100 px-4 py-1 rounded-full  text-sm lg:text-md">{getStatusLabel(orderItem.status)}</span>
-                          </div>
-
-                          <span className="text-gray-900 text-sm lg:text-md">
+                          <span className="bg-gray-900 text-white px-4 rounded-full">{orderItem.status}</span>
+                          <span>
                             {date}, {time}
                           </span>
                         </div>
-                        <div className={`mt-4 flex justify-between ${orderItem.status === "cancelled" ? "opacity-60" : ""}`}>
-                          <div className="flex lg:flex-row flex-col justify-between w-full">
+                        <div className="mt-6 flex justify-between">
+                          <div className="flex justify-between w-full">
                             <div className="flex flex-col space-y-4 mb-4">
                               {orderItem.Products.slice(0, expandedOrders[index] ? orderItem.Products.length : 1).map((product, productIndex) => (
-                                <div className="flex flex-1 flex-row items-center justify-between lg:justify-normal lg:space-x-4 space-x-6 lg:space-y-0" key={productIndex}>
-                                  <img
-                                    src={`http://localhost:8000/public/${product.Product.productImages[0].imageUrl}`}
-                                    loading="lazy"
-                                    alt="product"
-                                    className="w-[100px] lg:w-[120px]  h-[100px] lg:h-[120px]  object-cover shadow-md rounded-md"
-                                  />
-
-                                  <div className="flex flex-1 flex-col text-sm">
-                                    <span className="text-left">
-                                      {product.Product.productName} ({product.Product.productGender})
-                                    </span>
-                                    <span className="mb-2 lg:text-sm lg:text-left">
-                                      {product.quantity} x {formatToRupiah(product.Product.productPrice)}
-                                    </span>
-                                    <hr />
-                                    <span className=" mt-2 text-sm lg:text-left">Total Price</span>
-                                    <span className=" text-sm font-bold lg:text-left">{formatToRupiah(product.quantity * product.Product.productPrice)}</span>
+                                <div className="flex items-center space-x-4" key={productIndex}>
+                                  <img src={`http://localhost:8000/public/${product.Product.productImages[0].imageUrl}`} alt="product" className="w-[100px] h-[100px] object-cover rounded-md" />
+                                  <span>{product.quantity}x</span>
+                                  <div className="flex flex-col">
+                                    <span>{product.Product.productName}</span>
+                                    <span>{formatToRupiah(product.Product.productPrice)}</span>
                                   </div>
                                 </div>
                               ))}
                               {orderItem.Products.length > 1 && (
-                                <button onClick={() => toggleExpand(index)} className="text-blue-500 text-sm cursor-pointer focus:outline-none">
-                                  {expandedOrders[index] ? `Show less` : `+${orderItem.Products.length - 1} Other${orderItem.Products.length > 2 ? "s" : ""}`}
+                                <button onClick={() => toggleExpand(index)} className="text-blue-500 cursor-pointer focus:outline-none">
+                                  {expandedOrders[index] ? `Collapse` : `+${orderItem.Products.length - 1} Other${orderItem.Products.length > 2 ? "s" : ""}`}
                                 </button>
                               )}
                             </div>
-                            <div className="flex flex-col w-[180px]">
-                              <span className="text-sm">Total Quantity: {orderItem.totalQuantity}</span>
-                              <span className="font-bold text-sm"> Subtotal: {formatToRupiah(orderItem.totalPrice)} </span>
-                              {orderItem.status === "unpaid" && (
-                                <div className="w-[180px] mt-4 lg:mt-2">
-                                  {remainingTime && remainingTime.hours > 0 && (
-                                    <Button onClick={() => handleOpenModalProof(orderItem.orderId)} bgColor="gray.900" _hover={{ bgColor: "gray.700" }} size="sm" boxShadow="lg" borderRadius="md" color="gray.100">
-                                      <span className="text-sm font-light">Upload Payment Proof</span>
-                                    </Button>
-                                  )}
-
-                                  <div className={`flex flex-col mt-2 ${remainingTime && remainingTime.hours < 0 ? "text-red-500" : ""}`}>
-                                    <span className="text-sm">Remaining time</span>
-                                    <span className="font-bold text-sm">
-                                      {remainingTime ? `${formatTime(Math.max(remainingTime.hours, 0))}:${formatTime(Math.max(remainingTime.minutes, 0))}:${formatTime(Math.max(remainingTime.seconds, 0))}` : ""}
-                                    </span>
-                                  </div>
-                                </div>
+                            <div className="flex flex-col">
+                              <span>Total Quantity: {orderItem.totalQuantity}</span>
+                              <span className="font-bold"> Subtotal: {formatToRupiah(orderItem.totalPrice)} </span>
+                              {orderItem.status === "waiting-for-payment" && (
+                                <button onClick={() => handleOpenModalProof(orderItem.orderId)} className="px-2 py-1 bg-gray-900 rounded-md text-sm font-sagoe text-gray-100 hover:bg-gray-700 w-full">
+                                  Upload Payment Proof
+                                </button>
                               )}
                             </div>
                           </div>
@@ -390,10 +264,8 @@ export const Order = () => {
                     );
                   })
                 ) : (
-                  <div className="flex flex-col space-y-4">
-                    <div className="flex justify-center items-center py-2 mx-2 border border-gray-100 rounded-md">
-                      <p className="text-xl font-bold font-sagoe">No data matches</p>
-                    </div>
+                  <div className="flex justify-center items-center h-full py-2 mx-2 border border-gray-100 rounded-md">
+                    <p className="text-xl font-bold font-sagoe">No data matches</p>
                   </div>
                 )}
               </div>

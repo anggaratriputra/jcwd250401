@@ -19,8 +19,6 @@ import { toast } from "sonner";
 import getProducts from "../api/products/getProducts";
 import { UpdateStockModal } from "./UpdateStockModal";
 import { DeleteProductStockModal } from "./DeleteProductStockModal";
-import Skeleton from "react-loading-skeleton";
-import "react-loading-skeleton/dist/skeleton.css";
 
 function ProductList() {
   const [sortCriteria, setSortCriteria] = useState("date-desc"); // Default sorting criteria that matches the backend;
@@ -46,16 +44,17 @@ function ProductList() {
   const newProducts = useSelector((state) => state.product?.productList);
   const categoryLists = useSelector((state) => state?.category?.categoryLists);
   const location = useLocation();
-  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    setIsLoading(true);
-    const loadingTimeout = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
+  const handleSearchInputChange = _debounce((e) => {
+    setSearchInput(e.target.value);
+    const queryParams = new URLSearchParams(location.search);
+    queryParams.set("search", e.target.value);
 
-    return () => clearTimeout(loadingTimeout); // Clear the timeout on component unmount
-  }, [currentPage, sortCriteria, selectedCategory, searchInput, selectedFilter, totalPages, totalData, newProducts, categoryLists, selectedFilterStock]);
+    navigate({
+      pathname: location.pathname,
+      search: queryParams.toString(),
+    });
+  }, 600); // 600 milliseconds debounce time (adjust as needed)
 
   const formatToRupiah = (number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -142,23 +141,23 @@ function ProductList() {
     const searchParam = queryParams.get("search");
     const stockParam = queryParams.get("stock");
     const genderParam = queryParams.get("gender");
-
+  
     // Check if the sort parameter is present and update the state
     if (sortParam) {
       setSortCriteria(sortParam);
     }
-
+  
     // Check if the page parameter is present and update the state
     if (pageParam) {
       setCurrentPage(parseInt(pageParam, 10));
     }
-
+  
     // Check if the category parameter is present and update the state
     if (categoryParam === "all") {
       setSelectedCategory("All");
     } else if (categoryParam) {
       // Capitalize the first letter of each word
-      const formattedCategory = categoryParam.replace(/\b\w/g, (match) => match.toUpperCase());
+      const formattedCategory = categoryParam.replace(/\b\w/g, match => match.toUpperCase());
       setSelectedCategory(formattedCategory);
     }
 
@@ -166,31 +165,20 @@ function ProductList() {
     if (searchParam) {
       setSearchInput(searchParam);
     }
-
+  
     // Check if the stock parameter is present and update the state
     if (stockParam) {
       setSelectedFilterStock(stockParam);
     }
-
+  
     // Check if the gender parameter is present and update the state
     if (genderParam) {
       setSelectedFilter(genderParam);
     }
-
+  
     // Fetch products based on the updated state
     fetchProducts();
   }, [location.search]);
-
-  const handleSearchInputChange = _debounce((e) => {
-    setSearchInput(e.target.value);
-    const queryParams = new URLSearchParams(location.search);
-    queryParams.set("search", e.target.value);
-
-    navigate({
-      pathname: location.pathname,
-      search: queryParams.toString(),
-    });
-  }, 600);
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -351,7 +339,8 @@ function ProductList() {
         </div>
         <div className="flex gap-4 w-full">
           <div className="w-full">
-            <select className="py-2 border-2 rounded-lg w-full text-sm shadow-md focus:outline-none focus:border-gray-800 border-gray-400 focus:ring-transparent" onChange={handleFilterStockChange} value={selectedFilterStock}>
+            <select className="py-2 border-2 rounded-lg w-full text-sm shadow-md focus:outline-none focus:border-gray-800 border-gray-400 focus:ring-transparent" onChange={handleFilterStockChange}
+            value={selectedFilterStock}>
               <option value="" disabled className="text-gray-400">
                 Stock
               </option>
@@ -363,7 +352,8 @@ function ProductList() {
             </select>
           </div>
           <div className="w-full">
-            <select className="py-2 border-2 rounded-lg w-full text-sm shadow-md focus:outline-none focus:border-gray-800 border-gray-400 focus:ring-transparent" onChange={handleFilterChange} value={selectedFilter}>
+            <select className="py-2 border-2 rounded-lg w-full text-sm shadow-md focus:outline-none focus:border-gray-800 border-gray-400 focus:ring-transparent" onChange={handleFilterChange}
+            value={selectedFilter}>
               <option value="" disabled className="text-gray-400">
                 Gender
               </option>
@@ -375,7 +365,8 @@ function ProductList() {
             </select>
           </div>
           <div className="w-full">
-            <select className="py-2 border-2 rounded-lg w-full text-sm shadow-md focus:outline-none focus:border-gray-800 border-gray-400 focus:ring-transparent" onChange={handleCategoryChange} value={selectedCategory}>
+            <select className="py-2 border-2 rounded-lg w-full text-sm shadow-md focus:outline-none focus:border-gray-800 border-gray-400 focus:ring-transparent" onChange={handleCategoryChange}
+            value={selectedCategory}>
               <option value="" disabled className="text-gray-400">
                 Category
               </option>
@@ -402,7 +393,8 @@ function ProductList() {
           </div>
 
           <div className="w-full">
-            <select className="py-2 border-2 rounded-lg w-full text-sm shadow-md focus:outline-none focus:border-gray-800 border-gray-400 focus:ring-transparent" onChange={handleSortChange} value={sortCriteria}>
+            <select className="py-2 border-2 rounded-lg w-full text-sm shadow-md focus:outline-none focus:border-gray-800 border-gray-400 focus:ring-transparent" onChange={handleSortChange}
+            value={sortCriteria}>
               <option value="" disabled className="text-gray-400">
                 Sort
               </option>
@@ -498,162 +490,117 @@ function ProductList() {
         </div>
       </div>
       <div className={`space-y-6 overflow-y-scroll scrollbar-hide ${isWarehouseAdmin ? "h-[60vh]" : "h-[56vh]"}`}>
-        {isLoading ? (
-          // Display the skeleton loading effect during the loading period
-          Array.from({ length: 5 }, (_, index) => (
-            <div key={index} className="border border-gray-200 rounded-md px-4 lg:px-6 py-4 lg:py-2">
-              <div className="mt-4 flex justify-between">
-                <div className="flex lg:flex-row flex-col justify-between w-full">
-                  <div className="flex flex-col space-y-4 mb-4">
-                    <div className="flex flex-1 flex-col lg:flex-row lg:items-center justify-between lg:justify-normal lg:space-x-4 space-x-6 lg:space-y-0">
-                      <div className="w-[100px] hidden lg:block">
-                        <Skeleton height="100px" />
-                      </div>
-                      <div className=" flex justify-center mb-4 lg:hidden">
-                        <div className="w-[200px]">
-                          <Skeleton height="200px" />
-                        </div>
-                      </div>
-                      <div className="flex flex-1 lg:flex-row flex-col text-sm lg:space-x-4 lg:space-y-0 space-y-4 ">
-                        <div className="flex flex-col">
-                          <div className="w-[150px] lg:w-[250px]">
-                            <Skeleton height={20} />
-                          </div>
-                          <div className="w-[100px] lg:w-[200px]">
-                            <Skeleton height={20} />
-                          </div>
-                        </div>
-                        <div className="w-[150px] lg:w-[150px]">
-                          <Skeleton height={20} count={2} />
-                        </div>
-                        <div className="w-[150px] lg:w-[150px]">
-                          <Skeleton height={20} count={2} />
-                        </div>
-                        <div className="w-[150px] lg:w-[150px]">
-                          <Skeleton height={20} count={2} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="hidden lg:flex flex-col justify-center">
-                    <div className="w-[50px] lg:w-[200px]">
-                      <Skeleton height={40} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))
-        ) : products.length === 0 ? (
+        {products.length === 0 ? (
           <Text textAlign={"center"} fontStyle={"italic"}>
             No data matches.
           </Text>
         ) : (
-          products.map((product) => (
-            <div key={product.id} className="bg-white lg:items-center lg:justify-between flex lg:flex-row flex-col gap-6 lg:h-36 w-full px-6 lg:py-2  py-6 rounded-lg shadow-sm">
-              <div className="w-full flex justify-center lg:hidden">
-                <div className="h-[200px] w-[200px] lg:h-[100px] lg:w-[100px]">
-                  {product.totalStockAllWarehouses !== 0 ? (
-                    <img src={`http://localhost:8000/public/${product.productImages[0].imageUrl}`} className="w-full h-full object-cover shadow-xl" alt="Product Image" />
-                  ) : (
-                    <img src={`http://localhost:8000/public/${product.productImages[0].imageUrl}`} className="w-full h-full object-cover shadow-xl" alt="Product Image" style={{ filter: "grayscale(100%)" }} />
-                  )}
-                </div>
-              </div>
-              <div className="hidden lg:block h-[100px] w-[100px]">
+          ""
+        )}
+        {products.map((product) => (
+          <div key={product.id} className="bg-white lg:items-center lg:justify-between flex lg:flex-row flex-col gap-6 lg:h-36 w-full px-6 lg:py-2  py-6 rounded-lg shadow-sm">
+            <div className="w-full flex justify-center lg:hidden">
+              <div className="h-[200px] w-[200px] lg:h-[100px] lg:w-[100px]">
                 {product.totalStockAllWarehouses !== 0 ? (
                   <img src={`http://localhost:8000/public/${product.productImages[0].imageUrl}`} className="w-full h-full object-cover shadow-xl" alt="Product Image" />
                 ) : (
                   <img src={`http://localhost:8000/public/${product.productImages[0].imageUrl}`} className="w-full h-full object-cover shadow-xl" alt="Product Image" style={{ filter: "grayscale(100%)" }} />
                 )}
               </div>
-
-              <div className="flex w-60 flex-col">
-                {product.totalStockAllWarehouses !== 0 ? <span className="font-bold">{product.name}</span> : <span className="font-bold">(Out of stock) {product.name}</span>}
-                <span>
-                  SKU : {product.sku} ({product.gender}){" "}
-                </span>
-              </div>
-              <div className="flex w-40 flex-col">
-                <span className="font-bold">Statistic</span>
-                <div className="flex flex-row items-center gap-4">
-                  <div className="flex flex-row items-center gap-1">
-                    {" "}
-                    <PiEye /> {product.viewCount}{" "}
-                  </div>
-                  <div className="flex flex-row items-center gap-1">
-                    {" "}
-                    <PiShoppingBag /> {product.soldCount}{" "}
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-col w-48 ">
-                <span className="font-bold">Price</span>
-                <span>{formatToRupiah(product.price)}</span>
-              </div>
-              <div className="flex flex-col w-44">
-                <span className="font-bold">Stock</span>
-                <span>{product.totalStockAllWarehouses}</span>
-              </div>
-              {!isWarehouseAdmin ? (
-                <div>
-                  <Menu>
-                    <MenuButton
-                      px={2}
-                      py={2}
-                      transition="all 0.2s"
-                      borderRadius="lg"
-                      textColor="gray.600"
-                      boxShadow="md"
-                      borderColor="gray.500"
-                      borderWidth="2px"
-                      _hover={{ bg: "gray.900", textColor: "white" }}
-                      _expanded={{ bg: "gray.900", textColor: "white" }}
-                    >
-                      <Flex justifyContent="between" gap={4} px={2} alignItems="center">
-                        <Text fontWeight="bold">Edit</Text>
-                        <PiCaretDown size="20px" />
-                      </Flex>
-                    </MenuButton>
-                    <MenuList>
-                      <MenuItem onClick={() => toggleEditModal(product)}>Edit product</MenuItem>
-                      <MenuItem onClick={() => toggleUpdateProductStockModal(product)}>Update / Add stock</MenuItem>
-                      <MenuItem onClick={() => toggleDeleteProductStockModal(product)}>Delete stock</MenuItem>
-                      <MenuItem onClick={() => toggleArchiveModal(product)}>Archive</MenuItem>
-                      <MenuItem onClick={() => toggleDeleteModal(product)}>Delete</MenuItem>
-                    </MenuList>
-                  </Menu>
-                </div>
+            </div>
+            <div className="hidden lg:block h-[100px] w-[100px]">
+              {product.totalStockAllWarehouses !== 0 ? (
+                <img src={`http://localhost:8000/public/${product.productImages[0].imageUrl}`} className="w-full h-full object-cover shadow-xl" alt="Product Image" />
               ) : (
-                <div>
-                  <Menu>
-                    <MenuButton
-                      px={2}
-                      py={2}
-                      transition="all 0.2s"
-                      borderRadius="lg"
-                      textColor="gray.600"
-                      boxShadow="md"
-                      borderColor="gray.500"
-                      borderWidth="2px"
-                      _hover={{ bg: "gray.900", textColor: "white" }}
-                      _expanded={{ bg: "gray.900", textColor: "white" }}
-                    >
-                      <Flex justifyContent="between" gap={4} px={2} alignItems="center">
-                        <Text fontWeight="bold">Update</Text>
-                        <PiCaretDown size="20px" />
-                      </Flex>
-                    </MenuButton>
-                    <MenuList>
-                      <MenuItem onClick={() => toggleUpdateProductStockModal(product)}>Update / Add stock</MenuItem>
-                      <MenuItem onClick={() => toggleDeleteProductStockModal(product)}>Delete stock</MenuItem>
-                    </MenuList>
-                  </Menu>
-                </div>
+                <img src={`http://localhost:8000/public/${product.productImages[0].imageUrl}`} className="w-full h-full object-cover shadow-xl" alt="Product Image" style={{ filter: "grayscale(100%)" }} />
               )}
             </div>
-          ))
-        )}
+
+            <div className="flex w-60 flex-col">
+              {product.totalStockAllWarehouses !== 0 ? <span className="font-bold">{product.name}</span> : <span className="font-bold">(Out of stock) {product.name}</span>}
+              <span>
+                SKU : {product.sku} ({product.gender}){" "}
+              </span>
+            </div>
+            <div className="flex w-40 flex-col">
+              <span className="font-bold">Statistic</span>
+              <div className="flex flex-row items-center gap-4">
+                <div className="flex flex-row items-center gap-1">
+                  {" "}
+                  <PiEye /> {product.viewCount}{" "}
+                </div>
+                <div className="flex flex-row items-center gap-1">
+                  {" "}
+                  <PiShoppingBag /> {product.soldCount}{" "}
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col w-48 ">
+              <span className="font-bold">Price</span>
+              <span>{formatToRupiah(product.price)}</span>
+            </div>
+            <div className="flex flex-col w-44">
+              <span className="font-bold">Stock</span>
+              <span>{product.totalStockAllWarehouses}</span>
+            </div>
+            {!isWarehouseAdmin ? (
+              <div>
+                <Menu>
+                  <MenuButton
+                    px={2}
+                    py={2}
+                    transition="all 0.2s"
+                    borderRadius="lg"
+                    textColor="gray.600"
+                    boxShadow="md"
+                    borderColor="gray.500"
+                    borderWidth="2px"
+                    _hover={{ bg: "gray.900", textColor: "white" }}
+                    _expanded={{ bg: "gray.900", textColor: "white" }}
+                  >
+                    <Flex justifyContent="between" gap={4} px={2} alignItems="center">
+                      <Text fontWeight="bold">Edit</Text>
+                      <PiCaretDown size="20px" />
+                    </Flex>
+                  </MenuButton>
+                  <MenuList>
+                    <MenuItem onClick={() => toggleEditModal(product)}>Edit product</MenuItem>
+                    <MenuItem onClick={() => toggleUpdateProductStockModal(product)}>Update / Add stock</MenuItem>
+                    <MenuItem onClick={() => toggleDeleteProductStockModal(product)}>Delete stock</MenuItem>
+                    <MenuItem onClick={() => toggleArchiveModal(product)}>Archive</MenuItem>
+                    <MenuItem onClick={() => toggleDeleteModal(product)}>Delete</MenuItem>
+                  </MenuList>
+                </Menu>
+              </div>
+            ) : (
+              <div>
+                <Menu>
+                  <MenuButton
+                    px={2}
+                    py={2}
+                    transition="all 0.2s"
+                    borderRadius="lg"
+                    textColor="gray.600"
+                    boxShadow="md"
+                    borderColor="gray.500"
+                    borderWidth="2px"
+                    _hover={{ bg: "gray.900", textColor: "white" }}
+                    _expanded={{ bg: "gray.900", textColor: "white" }}
+                  >
+                    <Flex justifyContent="between" gap={4} px={2} alignItems="center">
+                      <Text fontWeight="bold">Update</Text>
+                      <PiCaretDown size="20px" />
+                    </Flex>
+                  </MenuButton>
+                  <MenuList>
+                    <MenuItem onClick={() => toggleUpdateProductStockModal(product)}>Update / Add stock</MenuItem>
+                    <MenuItem onClick={() => toggleDeleteProductStockModal(product)}>Delete stock</MenuItem>
+                  </MenuList>
+                </Menu>
+              </div>
+            )}
+          </div>
+        ))}
       </div>
       <Box display="flex" justifyContent="right" gap={2} textAlign="right" mr={4}>
         <Flex alignItems={"center"} gap={2}>
