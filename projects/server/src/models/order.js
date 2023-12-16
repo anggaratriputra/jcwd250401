@@ -23,7 +23,7 @@ module.exports = (sequelize, DataTypes) => {
         through: 'OrderItems',
         foreignKey: 'orderId',
       });
-      Order.hasOne(models.OrderItem, {
+      Order.hasMany(models.OrderItem, {
         foreignKey: 'orderId',
       });
     }
