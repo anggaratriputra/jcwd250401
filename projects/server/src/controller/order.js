@@ -4,9 +4,7 @@ const fs = require("fs").promises;
 
 const { isAfter, differenceInMinutes } = require("date-fns");
 
-
 const { Address, Order, OrderItem, Product, ProductImage, Warehouse, Shipment, Cart, CartItem, User, Mutation, WarehouseAddress, Journal, sequelize } = require("../models");
-
 
 // Config default axios with rajaongkir
 axios.defaults.baseURL = "https://api.rajaongkir.com/starter";
@@ -529,13 +527,14 @@ exports.getOrderLists = async (req, res) => {
 
     const orders = await Order.findAll(orderFilter);
 
-    if (orders.length === 0) {
+    if (!orders || orders.length === 0) {
       return res.status(404).json({
         ok: false,
         message: "No Data matches",
       });
     }
 
+    
     // Create an array for grouped order lists
     let groupedOrderListsWithImages = [];
 
@@ -634,7 +633,6 @@ exports.getOrderLists = async (req, res) => {
         }
       });
     }
-
     const totalUniqueOrders = orders.length;
 
     const totalPages = Math.ceil(totalUniqueOrders / limit);
@@ -659,7 +657,6 @@ exports.getOrderLists = async (req, res) => {
     });
   }
 };
-
 
 exports.automaticCancelUnpaidOrder = async (req, res) => {
   try {
@@ -704,7 +701,6 @@ exports.automaticCancelUnpaidOrder = async (req, res) => {
     console.error(error);
   }
 };
-
 
 // Function to find the nearest warehouse using Haversine formula
 function findNearestWarehouse(sourceLatitude, sourceLongitude, warehouses, requiredStock) {
