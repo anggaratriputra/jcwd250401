@@ -91,7 +91,7 @@ export default function App() {
                   <Route path="/collections/unisex" element={<UnisexCollections />} />
                   <Route path="/products/:gender/:mainCategory?/:subCategory?/:productName?" element={<HomeProducts />} />
                   {/* Add more route configurations as needed */}
-                  <Route path="*" element={<NotFound />} />
+                  <Route path="/*" element={<NotFound />} />
                 </Routes>
               </div>
             </CSSTransition>

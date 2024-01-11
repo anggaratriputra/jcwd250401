@@ -2,9 +2,11 @@ const express = require("express");
 const path = require("path");
 const PORT = 8000;
 const cors = require("cors");
+const { join } = require("path");
 require("dotenv").config({
   path: __dirname + "/../.env",
 });
+
 
 const app = express();
 app.use(cors());
@@ -37,10 +39,7 @@ app.use("/api/cart", cartRouter);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/public", express.static(__dirname + "/public"));
 
-//#region API ROUTES
 
-// ===========================
-// NOTE : Add your routes here
 
 app.get("/api", (req, res) => {
   res.send(`Hello, this is my API`);
@@ -61,6 +60,36 @@ app.use((err, req, res) => {
     err,
   });
 });
+
+app.use((req, res, next) => {
+  if (req.path.includes("/api/")) {
+    res.status(404).send("Not found !");
+  } else {
+    next();
+  }
+});
+
+// error
+app.use((err, req, res, next) => {
+  if (req.path.includes("/api/")) {
+    console.error("Error : ", err.stack);
+    res.status(500).send("Error !");
+  } else {
+    next();
+  }
+});
+
+
+//region API ROUTES
+
+const clientPath = "../../client/build";
+app.use(express.static(join(__dirname, clientPath)));
+
+// Serve the HTML page
+app.get("*", (req, res) => {
+  res.sendFile(join(__dirname, clientPath, "index.html"));
+});
+
 
 app.listen(PORT, () => {
   console.log(`APP RUNNING at ${PORT} ✅`);

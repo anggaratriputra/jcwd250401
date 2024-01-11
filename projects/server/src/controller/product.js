@@ -517,6 +517,12 @@ exports.handleDeleteProduct = async (req, res) => {
       },
     });
 
+    await Mutation.destroy({
+      where: {
+        productId: product.id,
+      }
+    })
+
     // Delete the product itself
     await product.destroy();
 

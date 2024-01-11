@@ -59,16 +59,16 @@ export const EditCategoryModal = ({ isOpen, onClose, data, mainCategories }) => 
   return (
     <>
       <Modal isOpen={isOpen} onClose={onClose} size="xl" motionPreset="slideInBottom" isCentered>
-        <ModalContent boxShadow="md" bgColor="gray.900" px={4} py={2}>
+        <ModalContent boxShadow="md" bgColor="white" px={4} py={2}>
           <ModalHeader>
-            <Text textColor="white">Edit Category</Text>
+            <Text fontWeight="bold">Edit Category</Text>
           </ModalHeader>
           <ModalCloseButton textColor="white" />
           <form onSubmit={formik.handleSubmit}>
             <ModalBody>
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
-                  <label htmlFor="name" className="text-white">
+                  <label htmlFor="name">
                     Category Name
                   </label>
                   <input type="text" name="name" id="name" className="border border-black rounded-md p-2" placeholder="Category Name" {...formik.getFieldProps("name")} />
@@ -76,7 +76,7 @@ export const EditCategoryModal = ({ isOpen, onClose, data, mainCategories }) => 
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <label htmlFor="mainCategory" className="text-white">
+                  <label htmlFor="mainCategory">
                     Main Category
                   </label>
                   <select name="mainCategory" id="mainCategory" className="border border-black rounded-md p-2" {...formik.getFieldProps("mainCategory")} onChange={handleCategoryChange}>
